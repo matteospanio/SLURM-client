@@ -7,6 +7,9 @@ This repository contains a Flutter-based SLURM queue monitoring application that
 ### Application Purpose
 The SLURM Queue Client is a cross-platform desktop application designed to help users monitor and manage their SLURM job queues remotely. It connects to SLURM clusters via SSH and provides real-time job status monitoring with an intuitive Material Design 3 interface.
 
+### Current Development Status
+⚠️ **Note**: This project is currently in early development. The codebase contains the default Flutter counter app template. The features described in this document represent the planned functionality that needs to be implemented.
+
 ### Target Platforms
 - Primary: Linux desktop environments (GTK3-based)
 - Secondary: Windows, macOS (cross-platform Flutter support)
@@ -24,6 +27,13 @@ The SLURM Queue Client is a cross-platform desktop application designed to help 
 - `provider`: State management and dependency injection
 - `json_annotation` & `json_serializable`: Type-safe data persistence
 - `flutter_lints`: Code quality and style enforcement
+
+### Additional Dependencies (to be added)
+- `system_tray`: System tray integration for Linux desktop
+- `window_manager`: Desktop window management
+- `shared_preferences`: Local settings storage
+- `http`: HTTP client for potential web API integration
+- `build_runner`: Code generation for JSON serialization
 
 ### Platform Integration
 - **Linux**: GTK3 integration with system tray support
@@ -178,9 +188,66 @@ lib/
 - Sanitize command parameters to prevent injection
 - Implement proper session management
 
+## Debugging Common Issues
+
+### SSH Connection Problems
+- Check network connectivity and firewall settings
+- Verify SSH key permissions (600 for private keys)
+- Test connection manually with `ssh user@host`
+- Check SSH service logs on the cluster
+
+### SLURM Command Failures
+- Verify SLURM is properly installed and configured on target cluster
+- Check user permissions for SLURM commands
+- Validate command syntax and parameters
+- Monitor cluster load and availability
+
+### UI/State Issues
+- Check provider dependencies and context availability
+- Verify widget tree structure for context inheritance
+- Use Flutter Inspector for widget hierarchy debugging
+- Monitor state changes with provider debugging tools
+
+## Environment Setup
+
+### Development Requirements
+- Flutter SDK ^3.9.2
+- Dart SDK (bundled with Flutter)
+- IDE with Flutter/Dart support (VS Code, Android Studio, IntelliJ)
+- Git for version control
+
+### Testing SSH Connections
+Create test connections to verify SSH functionality:
+```bash
+# Test basic SSH connectivity
+ssh -o ConnectTimeout=10 user@cluster-host
+
+# Test SLURM commands remotely
+ssh user@cluster-host 'squeue --me'
+```
+
+### Building and Running
+```bash
+# Get dependencies
+flutter pub get
+
+# Generate code (for JSON serialization)
+flutter packages pub run build_runner build
+
+# Run in debug mode
+flutter run -d linux
+
+# Build for production
+flutter build linux --release
+```
+
 ## Future Development Areas
 - Web interface support
 - Mobile companion app
 - Advanced job scheduling features
 - Cluster resource monitoring
 - Multi-user collaboration features
+
+---
+
+*This file helps GitHub Copilot understand the project structure and provide more relevant code suggestions. Keep it updated as the project evolves.*
