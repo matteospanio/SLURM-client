@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -12,43 +13,46 @@ import 'screens/dashboard_screen.dart';
 import 'models/settings.dart' as models;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize window manager for desktop platforms
-  if (!isWeb()) {
-    await windowManager.ensureInitialized();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
     
-    WindowOptions windowOptions = const WindowOptions(
-      size: Size(1200, 800),
-      minimumSize: Size(800, 600),
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.normal,
-      windowButtonVisibility: true,
-    );
-    
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
-
-    // Initialize system tray if supported
-    if (SystemTrayService.isSupported) {
+    // Initialize window manager for desktop platforms only
+    if (!kIsWeb) {
       try {
-        await SystemTrayService().initialize();
+        await windowManager.ensureInitialized();
+        
+        WindowOptions windowOptions = const WindowOptions(
+          size: Size(1200, 800),
+          minimumSize: Size(800, 600),
+          center: true,
+          backgroundColor: Colors.transparent,
+          skipTaskbar: false,
+          titleBarStyle: TitleBarStyle.normal,
+          windowButtonVisibility: true,
+        );
+        
+        // Show window and then initialize system tray
+        await windowManager.waitUntilReadyToShow(windowOptions, () async {
+          await windowManager.show();
+          await windowManager.focus();
+        });
+        
+        debugPrint('Window manager initialized successfully');
       } catch (e) {
-        debugPrint('Failed to initialize system tray: $e');
+        debugPrint('Failed to initialize window manager: $e');
+        // Continue anyway - app can still work without window manager
       }
     }
+    
+    runApp(const SlurmQueueApp());
+  } catch (e) {
+    debugPrint('Critical error in main(): $e');
+    // Still try to run the app
+    runApp(const SlurmQueueApp());
   }
-  
-  runApp(const SlurmQueueApp());
 }
 
-bool isWeb() {
-  return identical(0, 0.0);
-}
+
 
 class SlurmQueueApp extends StatelessWidget {
   const SlurmQueueApp({super.key});

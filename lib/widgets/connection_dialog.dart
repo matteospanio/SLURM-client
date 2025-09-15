@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/connection_provider.dart';
@@ -72,6 +73,30 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
+              // Show web warning if on web platform
+              if (kIsWeb) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.orange.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'SSH connections are not supported in the web version. Please download the desktop version.',
+                          style: TextStyle(color: Colors.orange.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
@@ -280,21 +305,28 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
           child: const Text('Cancel'),
         ),
         const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: _isConnecting ? null : _testConnection,
-          child: const Text('Test'),
-        ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: _isConnecting ? null : _saveAndConnect,
-          child: _isConnecting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Connect'),
-        ),
+        if (!kIsWeb) ...[
+          ElevatedButton(
+            onPressed: _isConnecting ? null : _testConnection,
+            child: const Text('Test'),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _isConnecting ? null : _saveAndConnect,
+            child: _isConnecting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Connect'),
+          ),
+        ],
+        if (kIsWeb)
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
       ],
     );
   }

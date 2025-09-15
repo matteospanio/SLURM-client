@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/job_provider.dart';
@@ -45,7 +46,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Listen to job provider changes to update system tray
       jobProvider.addListener(_updateSystemTray);
       connectionProvider.addListener(_updateSystemTray);
+      
+      // Initialize system tray after UI is ready (desktop only)
+      if (!kIsWeb && SystemTrayService.isSupported) {
+        _initializeSystemTray();
+      }
     });
+  }
+
+  Future<void> _initializeSystemTray() async {
+    try {
+      // Wait a bit to ensure window is fully initialized
+      await Future.delayed(const Duration(milliseconds: 500));
+      await SystemTrayService().initialize();
+    } catch (e) {
+      debugPrint('Failed to initialize system tray: $e');
+    }
   }
 
   @override
@@ -64,15 +80,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _updateSystemTray() {
     if (!SystemTrayService.isSupported) return;
 
-    final jobProvider = context.read<JobProvider>();
-    final connectionProvider = context.read<ConnectionProvider>();
+    try {
+      final jobProvider = context.read<JobProvider>();
+      final connectionProvider = context.read<ConnectionProvider>();
 
-    SystemTrayService().updateStatus(
-      connected: connectionProvider.isConnected,
-      totalJobs: jobProvider.totalJobs,
-      runningJobs: jobProvider.runningJobs.length,
-      pendingJobs: jobProvider.pendingJobs.length,
-    );
+      SystemTrayService().updateStatus(
+        connected: connectionProvider.isConnected,
+        totalJobs: jobProvider.totalJobs,
+        runningJobs: jobProvider.runningJobs.length,
+        pendingJobs: jobProvider.pendingJobs.length,
+      );
+    } catch (e) {
+      debugPrint('Error updating system tray: $e');
+    }
   }
 
   @override
@@ -181,6 +201,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       floatingActionButton: Consumer<ConnectionProvider>(
         builder: (context, connectionProvider, child) {
+          if (kIsWeb) {
+            // Don't show connect button on web since SSH is not supported
+            return const SizedBox.shrink();
+          }
+          
           if (!connectionProvider.isConnected) {
             return FloatingActionButton(
               onPressed: () => _showConnectionDialog(),
@@ -281,6 +306,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildJobsList() {
     return Consumer2<JobProvider, ConnectionProvider>(
       builder: (context, jobProvider, connectionProvider, child) {
+        // Show web platform message if on web
+        if (kIsWeb && !connectionProvider.isConnected) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.public_off, size: 64, color: Colors.orange[400]),
+                const SizedBox(height: 16),
+                const Text(
+                  'Web Version Limitations',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'SSH connections are not supported in the web version.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Please download the desktop version to connect to SLURM clusters.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Could open GitHub releases page
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download Desktop Version'),
+                ),
+              ],
+            ),
+          );
+        }
+        
         if (!connectionProvider.isConnected) {
           return Center(
             child: Column(

@@ -114,6 +114,48 @@ void main() {
     });
   });
 
+  group('SSH Service Tests', () {
+    test('SSH service handles web platform correctly', () {
+      final sshService = SshService();
+      const testConnection = SshConnection(
+        name: 'test',
+        hostname: 'example.com',
+        username: 'user',
+      );
+
+      // On web, SSH operations should fail gracefully
+      expect(sshService.isConnected, false);
+      expect(sshService.getConnectionStatus(), ConnectionStatus.disconnected);
+      
+      // These should complete without throwing on both platforms
+      expect(() => sshService.cachePassword('test', 'password'), returnsNormally);
+      expect(() => sshService.clearPassword('test'), returnsNormally);
+      expect(() => sshService.clearAllPasswords(), returnsNormally);
+    });
+
+    test('CommandResult works correctly', () {
+      const result = CommandResult(
+        stdout: 'test output',
+        stderr: '',
+        exitCode: 0,
+        command: 'echo test',
+      );
+
+      expect(result.isSuccess, true);
+      expect(result.hasError, false);
+
+      const errorResult = CommandResult(
+        stdout: '',
+        stderr: 'error message',
+        exitCode: 1,
+        command: 'false',
+      );
+
+      expect(errorResult.isSuccess, false);
+      expect(errorResult.hasError, true);
+    });
+  });
+
   group('Settings Model Tests', () {
     test('AppSettings has correct defaults', () {
       const settings = AppSettings();
