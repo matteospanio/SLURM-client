@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'package:slurm_queue_client/main.dart';
 import 'package:slurm_queue_client/models/job.dart';
 import 'package:slurm_queue_client/models/connection.dart';
+import 'package:slurm_queue_client/models/settings.dart';
 import 'package:slurm_queue_client/providers/job_provider.dart';
 import 'package:slurm_queue_client/providers/connection_provider.dart';
+import 'package:slurm_queue_client/providers/settings_provider.dart';
 import 'package:slurm_queue_client/services/ssh_service.dart';
 import 'package:slurm_queue_client/services/slurm_service.dart';
 import 'package:slurm_queue_client/services/storage_service.dart';
@@ -109,6 +111,47 @@ void main() {
       );
 
       expect(connection.connectionString, 'user@example.com:2222');
+    });
+  });
+
+  group('Settings Model Tests', () {
+    test('AppSettings has correct defaults', () {
+      const settings = AppSettings();
+
+      expect(settings.refreshInterval, 30);
+      expect(settings.autoRefresh, true);
+      expect(settings.showSystemTray, true);
+      expect(settings.startMinimized, false);
+      expect(settings.themeMode, ThemeMode.system);
+      expect(settings.showNotifications, true);
+      expect(settings.maxJobsToShow, 100);
+      expect(settings.jobStateFilters, isEmpty);
+    });
+
+    test('AppSettings copyWith works correctly', () {
+      const settings = AppSettings();
+      final updated = settings.copyWith(
+        refreshInterval: 60,
+        autoRefresh: false,
+        themeMode: ThemeMode.dark,
+      );
+
+      expect(updated.refreshInterval, 60);
+      expect(updated.autoRefresh, false);
+      expect(updated.themeMode, ThemeMode.dark);
+      // Check that other values remain unchanged
+      expect(updated.showSystemTray, true);
+      expect(updated.maxJobsToShow, 100);
+    });
+
+    test('JobFilter isEmpty works correctly', () {
+      const emptyFilter = JobFilter();
+      const nonEmptyFilter = JobFilter(user: 'test');
+
+      expect(emptyFilter.isEmpty, true);
+      expect(emptyFilter.isNotEmpty, false);
+      expect(nonEmptyFilter.isEmpty, false);
+      expect(nonEmptyFilter.isNotEmpty, true);
     });
   });
 }

@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'providers/job_provider.dart';
 import 'providers/connection_provider.dart';
+import 'providers/settings_provider.dart';
 import 'services/ssh_service.dart';
 import 'services/slurm_service.dart';
 import 'services/storage_service.dart';
+import 'services/system_tray_service.dart';
 import 'screens/dashboard_screen.dart';
+import 'models/settings.dart' as models;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,15 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+
+    // Initialize system tray if supported
+    if (SystemTrayService.isSupported) {
+      try {
+        await SystemTrayService().initialize();
+      } catch (e) {
+        debugPrint('Failed to initialize system tray: $e');
+      }
+    }
   }
   
   runApp(const SlurmQueueApp());
@@ -63,30 +75,50 @@ class SlurmQueueApp extends StatelessWidget {
           update: (_, sshService, storageService, previous) =>
               previous ?? ConnectionProvider(sshService, storageService),
         ),
+        ChangeNotifierProxyProvider<StorageService, SettingsProvider>(
+          create: (context) => SettingsProvider(context.read<StorageService>()),
+          update: (_, storageService, previous) =>
+              previous ?? SettingsProvider(storageService),
+        ),
         ChangeNotifierProxyProvider<SlurmService, JobProvider>(
           create: (context) => JobProvider(context.read<SlurmService>()),
           update: (_, slurmService, previous) =>
               previous ?? JobProvider(slurmService),
         ),
       ],
-      child: MaterialApp(
-        title: 'SLURM Queue Client',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
-        themeMode: ThemeMode.system,
-        home: const DashboardScreen(),
-        debugShowCheckedModeBanner: false,
+      child: Consumer<SettingsProvider>(
+        builder: (context, settingsProvider, child) {
+          return MaterialApp(
+            title: 'SLURM Queue Client',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+              useMaterial3: true,
+            ),
+            darkTheme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.deepPurple,
+                brightness: Brightness.dark,
+              ),
+              useMaterial3: true,
+            ),
+            themeMode: _getFlutterThemeMode(settingsProvider.settings.themeMode),
+            home: const DashboardScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
+  }
+
+  ThemeMode _getFlutterThemeMode(models.ThemeMode themeMode) {
+    switch (themeMode) {
+      case models.ThemeMode.light:
+        return ThemeMode.light;
+      case models.ThemeMode.dark:
+        return ThemeMode.dark;
+      case models.ThemeMode.system:
+        return ThemeMode.system;
+    }
   }
 }
 

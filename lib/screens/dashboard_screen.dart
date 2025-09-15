@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/job_provider.dart';
 import '../providers/connection_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/job.dart';
 import '../models/settings.dart';
+import '../services/system_tray_service.dart';
 import '../widgets/job_card.dart';
 import '../widgets/connection_dialog.dart';
 import '../widgets/job_filter_dialog.dart';
@@ -28,16 +30,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Auto-connect to default connection if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final connectionProvider = context.read<ConnectionProvider>();
+      final settingsProvider = context.read<SettingsProvider>();
+      
       if (!connectionProvider.isConnected && connectionProvider.defaultConnection != null) {
         _showConnectionDialog();
       }
+
+      // Setup auto-refresh if enabled
+      final jobProvider = context.read<JobProvider>();
+      if (settingsProvider.settings.autoRefresh) {
+        jobProvider.startAutoRefresh(settingsProvider.settings.refreshInterval);
+      }
+
+      // Listen to job provider changes to update system tray
+      jobProvider.addListener(_updateSystemTray);
+      connectionProvider.addListener(_updateSystemTray);
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    
+    // Remove listeners
+    final jobProvider = context.read<JobProvider>();
+    final connectionProvider = context.read<ConnectionProvider>();
+    jobProvider.removeListener(_updateSystemTray);
+    connectionProvider.removeListener(_updateSystemTray);
+    
     super.dispose();
+  }
+
+  void _updateSystemTray() {
+    if (!SystemTrayService.isSupported) return;
+
+    final jobProvider = context.read<JobProvider>();
+    final connectionProvider = context.read<ConnectionProvider>();
+    
+    SystemTrayService().updateStatus(
+      connected: connectionProvider.isConnected,
+      totalJobs: jobProvider.totalJobs,
+      runningJobs: jobProvider.runningJobs.length,
+      pendingJobs: jobProvider.pendingJobs.length,
+    );
   }
 
   @override
