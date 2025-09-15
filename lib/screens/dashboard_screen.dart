@@ -4,7 +4,6 @@ import '../providers/job_provider.dart';
 import '../providers/connection_provider.dart';
 import '../providers/settings_provider.dart';
 import '../models/job.dart';
-import '../models/settings.dart';
 import '../services/system_tray_service.dart';
 import '../widgets/job_card.dart';
 import '../widgets/connection_dialog.dart';
@@ -26,13 +25,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Auto-connect to default connection if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final connectionProvider = context.read<ConnectionProvider>();
       final settingsProvider = context.read<SettingsProvider>();
-      
-      if (!connectionProvider.isConnected && connectionProvider.defaultConnection != null) {
+
+      if (!connectionProvider.isConnected &&
+          connectionProvider.defaultConnection != null) {
         _showConnectionDialog();
       }
 
@@ -51,13 +51,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    
+
     // Remove listeners
     final jobProvider = context.read<JobProvider>();
     final connectionProvider = context.read<ConnectionProvider>();
     jobProvider.removeListener(_updateSystemTray);
     connectionProvider.removeListener(_updateSystemTray);
-    
+
     super.dispose();
   }
 
@@ -66,7 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final jobProvider = context.read<JobProvider>();
     final connectionProvider = context.read<ConnectionProvider>();
-    
+
     SystemTrayService().updateStatus(
       connected: connectionProvider.isConnected,
       totalJobs: jobProvider.totalJobs,
@@ -86,15 +86,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             builder: (context, connectionProvider, child) {
               return IconButton(
                 icon: Icon(
-                  connectionProvider.isConnected 
-                      ? Icons.cloud_done 
+                  connectionProvider.isConnected
+                      ? Icons.cloud_done
                       : Icons.cloud_off,
-                  color: connectionProvider.isConnected 
-                      ? Colors.green 
+                  color: connectionProvider.isConnected
+                      ? Colors.green
                       : Colors.red,
                 ),
                 onPressed: () => _showConnectionDialog(),
-                tooltip: connectionProvider.isConnected 
+                tooltip: connectionProvider.isConnected
                     ? 'Connected to ${connectionProvider.currentConnection?.name}'
                     : 'Not connected',
               );
@@ -118,7 +118,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _sortAscending = true;
                 }
               });
-              context.read<JobProvider>().sortJobs(_sortCriteria, ascending: _sortAscending);
+              context.read<JobProvider>().sortJobs(
+                _sortCriteria,
+                ascending: _sortAscending,
+              );
             },
             itemBuilder: (BuildContext context) => [
               PopupMenuItem(
@@ -150,7 +153,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Consumer<JobProvider>(
             builder: (context, jobProvider, child) {
               return IconButton(
-                icon: jobProvider.isLoading 
+                icon: jobProvider.isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -208,9 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 )
               : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
         onChanged: _onSearchChanged,
       ),
@@ -232,10 +233,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatChip('Total', jobProvider.totalJobs.toString(), Colors.blue),
-                  _buildStatChip('Running', jobProvider.jobStatistics['Running']?.toString() ?? '0', Colors.green),
-                  _buildStatChip('Pending', jobProvider.jobStatistics['Pending']?.toString() ?? '0', Colors.orange),
-                  _buildStatChip('Failed', jobProvider.jobStatistics['Failed']?.toString() ?? '0', Colors.red),
+                  _buildStatChip(
+                    'Total',
+                    jobProvider.totalJobs.toString(),
+                    Colors.blue,
+                  ),
+                  _buildStatChip(
+                    'Running',
+                    jobProvider.jobStatistics['Running']?.toString() ?? '0',
+                    Colors.green,
+                  ),
+                  _buildStatChip(
+                    'Pending',
+                    jobProvider.jobStatistics['Pending']?.toString() ?? '0',
+                    Colors.orange,
+                  ),
+                  _buildStatChip(
+                    'Failed',
+                    jobProvider.jobStatistics['Failed']?.toString() ?? '0',
+                    Colors.red,
+                  ),
                 ],
               ),
             ),
@@ -256,13 +273,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: color,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -365,10 +376,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const JobFilterDialog(),
-    );
+    showDialog(context: context, builder: (context) => const JobFilterDialog());
   }
 
   Future<void> _cancelJob(String jobId) async {
@@ -393,12 +401,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (result == true) {
       final jobProvider = context.read<JobProvider>();
       final success = await jobProvider.cancelJob(jobId);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              success 
+              success
                   ? 'Job $jobId cancelled successfully'
                   : 'Failed to cancel job $jobId',
             ),
@@ -426,7 +434,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildDetailRow('Time', job.time),
               _buildDetailRow('Nodes', job.nodes),
               _buildDetailRow('Node List', job.nodeList),
-              if (job.partition != null) _buildDetailRow('Partition', job.partition!),
+              if (job.partition != null)
+                _buildDetailRow('Partition', job.partition!),
             ],
           ),
         ),
@@ -460,8 +469,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _navigateToSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
   }
 }

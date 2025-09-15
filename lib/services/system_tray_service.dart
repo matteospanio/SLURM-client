@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
+/// Notification type for system tray alerts
+enum SystemTrayNotificationType { info, warning, error }
+
 class SystemTrayService {
   static final SystemTrayService _instance = SystemTrayService._internal();
   factory SystemTrayService() => _instance;
@@ -33,12 +36,9 @@ class SystemTrayService {
   /// Setup context menu for system tray
   Future<void> _setupContextMenu() async {
     final Menu menu = Menu();
-    
+
     await menu.buildFrom([
-      MenuItemLabel(
-        label: 'SLURM Queue Client',
-        enabled: false,
-      ),
+      MenuItemLabel(label: 'SLURM Queue Client', enabled: false),
       MenuSeparator(),
       MenuItemLabel(
         label: 'Show/Hide',
@@ -54,10 +54,7 @@ class SystemTrayService {
         onClicked: (menuItem) => _showSettings(),
       ),
       MenuSeparator(),
-      MenuItemLabel(
-        label: 'Quit',
-        onClicked: (menuItem) => _quit(),
-      ),
+      MenuItemLabel(label: 'Quit', onClicked: (menuItem) => _quit()),
     ]);
 
     await _systemTray.setContextMenu(menu);
@@ -77,14 +74,14 @@ class SystemTrayService {
       final tooltip = connected
           ? 'SLURM Queue Client\nTotal: $totalJobs | Running: $runningJobs | Pending: $pendingJobs'
           : 'SLURM Queue Client\nNot connected';
-      
+
       await _systemTray.setToolTip(tooltip);
 
       // Update icon based on status
-      final iconPath = connected 
+      final iconPath = connected
           ? _getIconPath(connected: true)
           : _getIconPath(connected: false);
-      
+
       await _systemTray.setImage(iconPath);
     } catch (e) {
       debugPrint('Failed to update system tray status: $e');
@@ -112,7 +109,9 @@ class SystemTrayService {
   void startBlinking() {
     if (!_isInitialized || _blinkTimer?.isActive == true) return;
 
-    _blinkTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+    _blinkTimer = Timer.periodic(const Duration(milliseconds: 500), (
+      timer,
+    ) async {
       try {
         // Alternate between normal and alert icons
         final isAlertIcon = timer.tick % 2 == 0;
@@ -128,7 +127,7 @@ class SystemTrayService {
   void stopBlinking() {
     _blinkTimer?.cancel();
     _blinkTimer = null;
-    
+
     // Reset to normal icon
     if (_isInitialized) {
       _systemTray.setImage(_getIconPath());
@@ -209,5 +208,6 @@ class SystemTrayService {
   }
 
   /// Check if system tray is supported
-  static bool get isSupported => Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  static bool get isSupported =>
+      Platform.isLinux || Platform.isWindows || Platform.isMacOS;
 }

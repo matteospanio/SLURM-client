@@ -16,11 +16,7 @@ class SshService {
     try {
       await disconnect(); // Disconnect any existing connection
 
-      _client = SSHClient(
-        host: connection.hostname,
-        port: connection.port,
-        username: connection.username,
-      );
+      String? passwordOrKey;
 
       if (connection.usePassword) {
         // Use password authentication
@@ -28,7 +24,7 @@ class SshService {
         if (pwd == null) {
           throw Exception('Password required for connection');
         }
-        await _client!.connect(password: pwd);
+        passwordOrKey = pwd;
         _passwordCache[connection.connectionString] = pwd; // Cache password
       } else {
         // Use key-based authentication
@@ -39,8 +35,7 @@ class SshService {
               'Private key file not found: ${connection.privateKeyPath}',
             );
           }
-          final privateKey = await keyFile.readAsString();
-          await _client!.connect(privateKey: privateKey);
+          passwordOrKey = await keyFile.readAsString();
         } else {
           // Try default SSH keys
           final homeDir =
@@ -53,18 +48,15 @@ class SshService {
               '$homeDir/.ssh/id_ecdsa',
             ];
 
-            String? privateKey;
             for (final keyPath in defaultKeyPaths) {
               final keyFile = File(keyPath);
               if (keyFile.existsSync()) {
-                privateKey = await keyFile.readAsString();
+                passwordOrKey = await keyFile.readAsString();
                 break;
               }
             }
 
-            if (privateKey != null) {
-              await _client!.connect(privateKey: privateKey);
-            } else {
+            if (passwordOrKey == null) {
               throw Exception(
                 'No SSH key found. Please specify a private key path.',
               );
@@ -75,6 +67,14 @@ class SshService {
         }
       }
 
+      _client = SSHClient(
+        host: connection.hostname,
+        port: connection.port,
+        username: connection.username,
+        passwordOrKey: passwordOrKey,
+      );
+
+      await _client!.connect();
       _currentConnection = connection;
       return true;
     } catch (e) {
