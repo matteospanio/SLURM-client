@@ -196,6 +196,45 @@ lib/
 
 ## Troubleshooting
 
+### Linux Desktop Issues
+
+#### App Crashes with XCB Threading Error
+If you encounter this error:
+```
+[xcb] Unknown request in queue while dequeuing
+[xcb] Most likely this is a multi-threaded client and XInitThreads has not been called
+```
+
+**Solution**: This has been fixed in the latest version by adding proper X11 threading initialization. Update to the latest version or rebuild the application.
+
+#### System Tray Not Working
+If the system tray doesn't appear or causes issues:
+1. **Check desktop environment**: System tray works best with GNOME, KDE, XFCE
+2. **Install tray support**: Some minimal desktop environments need additional packages:
+   ```bash
+   sudo apt install libappindicator3-1 libappindicator3-dev
+   ```
+3. **Disable if problematic**: The app works fine without system tray integration
+
+#### Application Window Unresponsive
+If the main window becomes unresponsive:
+1. **Update graphics drivers**: Ensure you have up-to-date graphics drivers
+2. **Check X11 vs Wayland**: The app is optimized for X11 sessions
+3. **Increase initialization delay**: The app now waits longer for system initialization
+
+#### GTK/X11 Dependencies
+For building from source, ensure you have the required development packages:
+```bash
+# Ubuntu/Debian
+sudo apt install libgtk-3-dev libx11-dev pkg-config cmake ninja-build
+
+# Fedora/CentOS
+sudo dnf install gtk3-devel libX11-devel pkg-config cmake ninja-build
+
+# Arch Linux
+sudo pacman -S gtk3 libx11 pkg-config cmake ninja
+```
+
 ### SSH Connection Issues
 1. **Verify network connectivity**
    ```bash

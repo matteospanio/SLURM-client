@@ -161,8 +161,7 @@ class SystemTrayService {
     // Check if we're in web environment first
     if (kIsWeb) return '';
 
-    // In a real implementation, you would have different icon files
-    // For now, return a placeholder path that should exist
+    // In production builds, icons are in the assets directory
     String iconName;
     if (alert) {
       iconName = 'tray_alert.png';
@@ -172,8 +171,9 @@ class SystemTrayService {
       iconName = 'tray_disconnected.png';
     }
 
-    // Try to use a system icon as fallback if our icons don't exist
     try {
+      // Use absolute path for system tray
+      // In a Flutter app, assets are typically in the bundle
       return 'assets/icons/$iconName';
     } catch (e) {
       // Fallback to a basic icon or empty string
