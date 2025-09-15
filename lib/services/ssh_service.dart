@@ -7,7 +7,7 @@ class SshService {
   SSHClient? _client;
   SshConnection? _currentConnection;
   final Map<String, String> _passwordCache = {};
-  
+
   bool get isConnected => _client != null;
   SshConnection? get currentConnection => _currentConnection;
 
@@ -15,7 +15,7 @@ class SshService {
   Future<bool> connect(SshConnection connection, {String? password}) async {
     try {
       await disconnect(); // Disconnect any existing connection
-      
+
       _client = SSHClient(
         host: connection.hostname,
         port: connection.port,
@@ -35,20 +35,24 @@ class SshService {
         if (connection.privateKeyPath != null) {
           final keyFile = File(connection.privateKeyPath!);
           if (!keyFile.existsSync()) {
-            throw Exception('Private key file not found: ${connection.privateKeyPath}');
+            throw Exception(
+              'Private key file not found: ${connection.privateKeyPath}',
+            );
           }
           final privateKey = await keyFile.readAsString();
           await _client!.connect(privateKey: privateKey);
         } else {
           // Try default SSH keys
-          final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+          final homeDir =
+              Platform.environment['HOME'] ??
+              Platform.environment['USERPROFILE'];
           if (homeDir != null) {
             final defaultKeyPaths = [
               '$homeDir/.ssh/id_rsa',
               '$homeDir/.ssh/id_ed25519',
               '$homeDir/.ssh/id_ecdsa',
             ];
-            
+
             String? privateKey;
             for (final keyPath in defaultKeyPaths) {
               final keyFile = File(keyPath);
@@ -57,11 +61,13 @@ class SshService {
                 break;
               }
             }
-            
+
             if (privateKey != null) {
               await _client!.connect(privateKey: privateKey);
             } else {
-              throw Exception('No SSH key found. Please specify a private key path.');
+              throw Exception(
+                'No SSH key found. Please specify a private key path.',
+              );
             }
           } else {
             throw Exception('Cannot determine home directory for SSH keys');
@@ -96,7 +102,7 @@ class SshService {
 
     try {
       final result = await _client!.execute(command);
-      return result;
+      return result ?? '';
     } catch (e) {
       throw Exception('Failed to execute command "$command": $e');
     }
@@ -111,7 +117,7 @@ class SshService {
     try {
       final result = await _client!.execute(command);
       return CommandResult(
-        stdout: result,
+        stdout: result ?? '',
         stderr: '',
         exitCode: 0,
         command: command,
@@ -127,28 +133,25 @@ class SshService {
   }
 
   /// Test connection to the server
-  Future<bool> testConnection(SshConnection connection, {String? password}) async {
+  Future<bool> testConnection(
+    SshConnection connection, {
+    String? password,
+  }) async {
     try {
+      final passwordOrKey = connection.usePassword
+          ? (password ?? _passwordCache[connection.connectionString])
+          : (connection.privateKeyPath != null
+                ? await File(connection.privateKeyPath!).readAsString()
+                : null);
+
+      if (passwordOrKey == null) return false;
+
       final tempClient = SSHClient(
         host: connection.hostname,
         port: connection.port,
         username: connection.username,
+        passwordOrKey: passwordOrKey,
       );
-
-      if (connection.usePassword) {
-        final pwd = password ?? _passwordCache[connection.connectionString];
-        if (pwd == null) return false;
-        await tempClient.connect(password: pwd);
-      } else {
-        if (connection.privateKeyPath != null) {
-          final keyFile = File(connection.privateKeyPath!);
-          if (!keyFile.existsSync()) return false;
-          final privateKey = await keyFile.readAsString();
-          await tempClient.connect(privateKey: privateKey);
-        } else {
-          return false; // Require explicit key path for testing
-        }
-      }
 
       // Test basic command
       await tempClient.execute('echo test');

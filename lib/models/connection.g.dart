@@ -10,7 +10,7 @@ SshConnection _$SshConnectionFromJson(Map<String, dynamic> json) =>
     SshConnection(
       name: json['name'] as String,
       hostname: json['hostname'] as String,
-      port: json['port'] as int? ?? 22,
+      port: (json['port'] as num?)?.toInt() ?? 22,
       username: json['username'] as String,
       privateKeyPath: json['privateKeyPath'] as String?,
       usePassword: json['usePassword'] as bool? ?? false,
