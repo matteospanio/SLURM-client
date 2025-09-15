@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -14,41 +15,35 @@ import 'models/settings.dart' as models;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize window manager for desktop platforms
-  if (!isWeb()) {
-    await windowManager.ensureInitialized();
-    
-    WindowOptions windowOptions = const WindowOptions(
-      size: Size(1200, 800),
-      minimumSize: Size(800, 600),
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.normal,
-      windowButtonVisibility: true,
-    );
-    
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
-
-    // Initialize system tray if supported
-    if (SystemTrayService.isSupported) {
-      try {
-        await SystemTrayService().initialize();
-      } catch (e) {
-        debugPrint('Failed to initialize system tray: $e');
-      }
+  // Initialize window manager for desktop platforms only
+  if (!kIsWeb) {
+    try {
+      await windowManager.ensureInitialized();
+      
+      WindowOptions windowOptions = const WindowOptions(
+        size: Size(1200, 800),
+        minimumSize: Size(800, 600),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.normal,
+        windowButtonVisibility: true,
+      );
+      
+      // Show window and then initialize system tray
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } catch (e) {
+      debugPrint('Failed to initialize window manager: $e');
     }
   }
   
   runApp(const SlurmQueueApp());
 }
 
-bool isWeb() {
-  return identical(0, 0.0);
-}
+
 
 class SlurmQueueApp extends StatelessWidget {
   const SlurmQueueApp({super.key});

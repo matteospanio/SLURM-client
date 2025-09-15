@@ -18,7 +18,9 @@ class SystemTrayService {
 
   /// Initialize system tray
   Future<void> initialize() async {
-    if (_isInitialized || !Platform.isLinux) return;
+    if (_isInitialized || kIsWeb) return;
+    
+    if (!kIsWeb && !Platform.isLinux) return;
 
     try {
       await _systemTray.initSystemTray(
@@ -149,6 +151,8 @@ class SystemTrayService {
 
   /// Toggle main window visibility
   Future<void> _toggleWindow() async {
+    if (kIsWeb) return; // No window manager on web
+    
     try {
       final isVisible = await windowManager.isVisible();
       if (isVisible) {
@@ -178,7 +182,9 @@ class SystemTrayService {
   Future<void> _quit() async {
     try {
       await destroy();
-      exit(0);
+      if (!kIsWeb) {
+        exit(0);
+      }
     } catch (e) {
       debugPrint('Error quitting application: $e');
     }
@@ -208,6 +214,8 @@ class SystemTrayService {
   }
 
   /// Check if system tray is supported
-  static bool get isSupported =>
-      Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  static bool get isSupported {
+    if (kIsWeb) return false;
+    return Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+  }
 }
