@@ -19,17 +19,17 @@ class SystemTrayService {
   /// Initialize system tray
   Future<void> initialize() async {
     if (_isInitialized || kIsWeb) return;
-    
+
     if (!kIsWeb && !Platform.isLinux) return;
 
     try {
       // Wait for X11 system to be fully ready
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       final iconPath = _getIconPath();
       await _systemTray.initSystemTray(
         title: "SLURM Queue Client",
-        iconPath: iconPath.isNotEmpty ? iconPath : null,
+        iconPath: iconPath,
       );
 
       await _setupContextMenu();
@@ -146,7 +146,7 @@ class SystemTrayService {
   String _getIconPath({bool connected = true, bool alert = false}) {
     // Check if we're in web environment first
     if (kIsWeb) return '';
-    
+
     // In a real implementation, you would have different icon files
     // For now, return a placeholder path that should exist
     String iconName;
@@ -157,7 +157,7 @@ class SystemTrayService {
     } else {
       iconName = 'tray_disconnected.png';
     }
-    
+
     // Try to use a system icon as fallback if our icons don't exist
     try {
       return 'assets/icons/$iconName';
@@ -171,7 +171,7 @@ class SystemTrayService {
   /// Toggle main window visibility
   Future<void> _toggleWindow() async {
     if (kIsWeb) return; // No window manager on web
-    
+
     try {
       final isVisible = await windowManager.isVisible();
       if (isVisible) {

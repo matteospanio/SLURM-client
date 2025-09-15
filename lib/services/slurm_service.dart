@@ -10,9 +10,10 @@ class SlurmService {
   /// Get user's job queue using squeue --me
   Future<List<SlurmJob>> getUserJobs() async {
     try {
-      final command = 'squeue --me --format="%18i %.9P %.20j %.8u %.2t %.10M %.6D %R"';
+      final command =
+          'squeue --me --format="%18i %.9P %.20j %.8u %.2t %.10M %.6D %R"';
       final result = await _sshService.executeCommand(command);
-      
+
       return _parseSqueuOutput(result);
     } catch (e) {
       throw Exception('Failed to get user jobs: $e');
@@ -27,7 +28,7 @@ class SlurmService {
   }) async {
     try {
       var command = 'squeue --format="%18i %.9P %.20j %.8u %.2t %.10M %.6D %R"';
-      
+
       if (user != null && user.isNotEmpty) {
         command += ' --user=$user';
       }
@@ -37,7 +38,7 @@ class SlurmService {
       if (state != null && state.isNotEmpty) {
         command += ' --states=$state';
       }
-      
+
       final result = await _sshService.executeCommand(command);
       return _parseSqueuOutput(result);
     } catch (e) {
@@ -50,7 +51,7 @@ class SlurmService {
     try {
       final command = 'scancel $jobId';
       final result = await _sshService.executeCommandWithDetails(command);
-      
+
       if (result.isSuccess) {
         return true;
       } else {
@@ -66,7 +67,7 @@ class SlurmService {
     try {
       final command = 'scontrol show job $jobId';
       final result = await _sshService.executeCommand(command);
-      
+
       return _parseScontrolOutput(result);
     } catch (e) {
       throw Exception('Failed to get job details for $jobId: $e');
@@ -78,7 +79,7 @@ class SlurmService {
     try {
       final command = 'sinfo --format="%20P %.5a %.10l %.6D %.6t %N"';
       final result = await _sshService.executeCommand(command);
-      
+
       return _parseSinfoOutput(result);
     } catch (e) {
       throw Exception('Failed to get cluster info: $e');
@@ -88,7 +89,9 @@ class SlurmService {
   /// Check if SLURM is available on the system
   Future<bool> isSlurmAvailable() async {
     try {
-      final result = await _sshService.executeCommandWithDetails('which squeue');
+      final result = await _sshService.executeCommandWithDetails(
+        'which squeue',
+      );
       return result.isSuccess;
     } catch (e) {
       return false;
@@ -113,12 +116,12 @@ class SlurmService {
   List<SlurmJob> _parseSqueuOutput(String output) {
     final jobs = <SlurmJob>[];
     final lines = output.split('\n');
-    
+
     // Skip header line and empty lines
     for (int i = 1; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isEmpty) continue;
-      
+
       try {
         final job = SlurmJob.fromSqueueLine(line);
         jobs.add(job);
@@ -127,7 +130,7 @@ class SlurmService {
         continue;
       }
     }
-    
+
     return jobs;
   }
 
@@ -135,10 +138,10 @@ class SlurmService {
   Map<String, dynamic> _parseScontrolOutput(String output) {
     final details = <String, dynamic>{};
     final lines = output.split('\n');
-    
+
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
-      
+
       // Parse key=value pairs
       final keyValuePairs = line.split(' ');
       for (final pair in keyValuePairs) {
@@ -152,7 +155,7 @@ class SlurmService {
         }
       }
     }
-    
+
     return details;
   }
 
@@ -160,12 +163,12 @@ class SlurmService {
   Map<String, dynamic> _parseSinfoOutput(String output) {
     final partitions = <Map<String, dynamic>>[];
     final lines = output.split('\n');
-    
+
     // Skip header line
     for (int i = 1; i < lines.length; i++) {
       final line = lines[i].trim();
       if (line.isEmpty) continue;
-      
+
       final parts = line.split(RegExp(r'\s+'));
       if (parts.length >= 5) {
         partitions.add({
@@ -178,24 +181,23 @@ class SlurmService {
         });
       }
     }
-    
-    return {
-      'partitions': partitions,
-      'totalPartitions': partitions.length,
-    };
+
+    return {'partitions': partitions, 'totalPartitions': partitions.length};
   }
 
   /// Get job statistics
   Future<Map<String, int>> getJobStatistics({String? user}) async {
     try {
-      final jobs = user != null ? await getJobs(user: user) : await getUserJobs();
+      final jobs = user != null
+          ? await getJobs(user: user)
+          : await getUserJobs();
       final stats = <String, int>{};
-      
+
       for (final job in jobs) {
         final state = SlurmJob.getStateName(job.state);
         stats[state] = (stats[state] ?? 0) + 1;
       }
-      
+
       return stats;
     } catch (e) {
       throw Exception('Failed to get job statistics: $e');

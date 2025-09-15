@@ -15,12 +15,12 @@ import 'models/settings.dart' as models;
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     // Initialize window manager for desktop platforms only
     if (!kIsWeb) {
       try {
         await windowManager.ensureInitialized();
-        
+
         WindowOptions windowOptions = const WindowOptions(
           size: Size(1200, 800),
           minimumSize: Size(800, 600),
@@ -30,20 +30,20 @@ void main() async {
           titleBarStyle: TitleBarStyle.normal,
           windowButtonVisibility: true,
         );
-        
+
         // Show window and then initialize system tray
         await windowManager.waitUntilReadyToShow(windowOptions, () async {
           await windowManager.show();
           await windowManager.focus();
         });
-        
+
         debugPrint('Window manager initialized successfully');
       } catch (e) {
         debugPrint('Failed to initialize window manager: $e');
         // Continue anyway - app can still work without window manager
       }
     }
-    
+
     runApp(const SlurmQueueApp());
   } catch (e) {
     debugPrint('Critical error in main(): $e');
@@ -51,8 +51,6 @@ void main() async {
     runApp(const SlurmQueueApp());
   }
 }
-
-
 
 class SlurmQueueApp extends StatelessWidget {
   const SlurmQueueApp({super.key});
@@ -65,13 +63,15 @@ class SlurmQueueApp extends StatelessWidget {
           create: (_) => SshService(),
           dispose: (_, service) => service.dispose(),
         ),
-        Provider<StorageService>(
-          create: (_) => StorageService(),
-        ),
+        Provider<StorageService>(create: (_) => StorageService()),
         ProxyProvider<SshService, SlurmService>(
           update: (_, sshService, __) => SlurmService(sshService),
         ),
-        ChangeNotifierProxyProvider2<SshService, StorageService, ConnectionProvider>(
+        ChangeNotifierProxyProvider2<
+          SshService,
+          StorageService,
+          ConnectionProvider
+        >(
           create: (context) => ConnectionProvider(
             context.read<SshService>(),
             context.read<StorageService>(),
@@ -105,7 +105,9 @@ class SlurmQueueApp extends StatelessWidget {
               ),
               useMaterial3: true,
             ),
-            themeMode: _getFlutterThemeMode(settingsProvider.settings.themeMode),
+            themeMode: _getFlutterThemeMode(
+              settingsProvider.settings.themeMode,
+            ),
             home: const DashboardScreen(),
             debugShowCheckedModeBanner: false,
           );
@@ -125,5 +127,3 @@ class SlurmQueueApp extends StatelessWidget {
     }
   }
 }
-
-

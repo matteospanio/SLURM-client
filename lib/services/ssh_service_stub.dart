@@ -22,7 +22,10 @@ class SshService {
     throw UnsupportedError('SSH service not available on this platform');
   }
 
-  Future<bool> testConnection(SshConnection connection, {String? password}) async {
+  Future<bool> testConnection(
+    SshConnection connection, {
+    String? password,
+  }) async {
     return false;
   }
 

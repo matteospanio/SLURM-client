@@ -26,7 +26,7 @@ class StorageService {
   Future<List<SshConnection>> loadConnections() async {
     await initialize();
     final connectionsString = _prefs!.getString(_connectionsKey);
-    
+
     if (connectionsString != null) {
       try {
         final connectionsJson = jsonDecode(connectionsString) as List;
@@ -38,7 +38,7 @@ class StorageService {
         return [];
       }
     }
-    
+
     return [];
   }
 
@@ -52,7 +52,7 @@ class StorageService {
   Future<AppSettings> loadSettings() async {
     await initialize();
     final settingsString = _prefs!.getString(_settingsKey);
-    
+
     if (settingsString != null) {
       try {
         final settingsJson = jsonDecode(settingsString);
@@ -62,7 +62,7 @@ class StorageService {
         return const AppSettings();
       }
     }
-    
+
     return const AppSettings();
   }
 
@@ -76,7 +76,7 @@ class StorageService {
   Future<Map<String, dynamic>?> loadWindowState() async {
     await initialize();
     final windowStateString = _prefs!.getString(_windowStateKey);
-    
+
     if (windowStateString != null) {
       try {
         return jsonDecode(windowStateString) as Map<String, dynamic>;
@@ -84,7 +84,7 @@ class StorageService {
         return null;
       }
     }
-    
+
     return null;
   }
 
@@ -177,14 +177,14 @@ class StorageService {
     await initialize();
     final allKeys = _prefs!.getKeys();
     final data = <String, dynamic>{};
-    
+
     for (final key in allKeys) {
       final value = _prefs!.get(key);
       if (value != null) {
         data[key] = value;
       }
     }
-    
+
     return {
       'data': data,
       'exportDate': DateTime.now().toIso8601String(),
@@ -195,17 +195,17 @@ class StorageService {
   /// Import data (from backup)
   Future<void> importData(Map<String, dynamic> backup) async {
     await initialize();
-    
+
     final data = backup['data'] as Map<String, dynamic>?;
     if (data != null) {
       // Clear existing data
       await _prefs!.clear();
-      
+
       // Import new data
       for (final entry in data.entries) {
         final key = entry.key;
         final value = entry.value;
-        
+
         if (value is String) {
           await _prefs!.setString(key, value);
         } else if (value is bool) {
@@ -227,7 +227,7 @@ class StorageService {
     final allKeys = _prefs!.getKeys();
     int totalSize = 0;
     final keyInfo = <String, int>{};
-    
+
     for (final key in allKeys) {
       final value = _prefs!.get(key);
       if (value != null) {
@@ -236,7 +236,7 @@ class StorageService {
         totalSize += size;
       }
     }
-    
+
     return {
       'totalKeys': allKeys.length,
       'totalSize': totalSize,
