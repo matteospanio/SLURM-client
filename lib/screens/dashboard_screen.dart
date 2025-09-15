@@ -201,6 +201,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       floatingActionButton: Consumer<ConnectionProvider>(
         builder: (context, connectionProvider, child) {
+          if (kIsWeb) {
+            // Don't show connect button on web since SSH is not supported
+            return const SizedBox.shrink();
+          }
+          
           if (!connectionProvider.isConnected) {
             return FloatingActionButton(
               onPressed: () => _showConnectionDialog(),
@@ -301,6 +306,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildJobsList() {
     return Consumer2<JobProvider, ConnectionProvider>(
       builder: (context, jobProvider, connectionProvider, child) {
+        // Show web platform message if on web
+        if (kIsWeb && !connectionProvider.isConnected) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.public_off, size: 64, color: Colors.orange[400]),
+                const SizedBox(height: 16),
+                const Text(
+                  'Web Version Limitations',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'SSH connections are not supported in the web version.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Please download the desktop version to connect to SLURM clusters.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Could open GitHub releases page
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download Desktop Version'),
+                ),
+              ],
+            ),
+          );
+        }
+        
         if (!connectionProvider.isConnected) {
           return Center(
             child: Column(
