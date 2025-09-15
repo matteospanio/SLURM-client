@@ -13,34 +13,43 @@ import 'screens/dashboard_screen.dart';
 import 'models/settings.dart' as models;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize window manager for desktop platforms only
-  if (!kIsWeb) {
-    try {
-      await windowManager.ensureInitialized();
-      
-      WindowOptions windowOptions = const WindowOptions(
-        size: Size(1200, 800),
-        minimumSize: Size(800, 600),
-        center: true,
-        backgroundColor: Colors.transparent,
-        skipTaskbar: false,
-        titleBarStyle: TitleBarStyle.normal,
-        windowButtonVisibility: true,
-      );
-      
-      // Show window and then initialize system tray
-      await windowManager.waitUntilReadyToShow(windowOptions, () async {
-        await windowManager.show();
-        await windowManager.focus();
-      });
-    } catch (e) {
-      debugPrint('Failed to initialize window manager: $e');
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize window manager for desktop platforms only
+    if (!kIsWeb) {
+      try {
+        await windowManager.ensureInitialized();
+        
+        WindowOptions windowOptions = const WindowOptions(
+          size: Size(1200, 800),
+          minimumSize: Size(800, 600),
+          center: true,
+          backgroundColor: Colors.transparent,
+          skipTaskbar: false,
+          titleBarStyle: TitleBarStyle.normal,
+          windowButtonVisibility: true,
+        );
+        
+        // Show window and then initialize system tray
+        await windowManager.waitUntilReadyToShow(windowOptions, () async {
+          await windowManager.show();
+          await windowManager.focus();
+        });
+        
+        debugPrint('Window manager initialized successfully');
+      } catch (e) {
+        debugPrint('Failed to initialize window manager: $e');
+        // Continue anyway - app can still work without window manager
+      }
     }
+    
+    runApp(const SlurmQueueApp());
+  } catch (e) {
+    debugPrint('Critical error in main(): $e');
+    // Still try to run the app
+    runApp(const SlurmQueueApp());
   }
-  
-  runApp(const SlurmQueueApp());
 }
 
 

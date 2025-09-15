@@ -23,15 +23,21 @@ class SystemTrayService {
     if (!kIsWeb && !Platform.isLinux) return;
 
     try {
+      // Wait for X11 system to be fully ready
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      final iconPath = _getIconPath();
       await _systemTray.initSystemTray(
         title: "SLURM Queue Client",
-        iconPath: _getIconPath(),
+        iconPath: iconPath.isNotEmpty ? iconPath : null,
       );
 
       await _setupContextMenu();
       _isInitialized = true;
+      debugPrint('System tray initialized successfully');
     } catch (e) {
       debugPrint('Failed to initialize system tray: $e');
+      // Don't rethrow - system tray is not critical for app functionality
     }
   }
 
@@ -138,14 +144,27 @@ class SystemTrayService {
 
   /// Get appropriate icon path
   String _getIconPath({bool connected = true, bool alert = false}) {
+    // Check if we're in web environment first
+    if (kIsWeb) return '';
+    
     // In a real implementation, you would have different icon files
-    // For now, return a placeholder path
+    // For now, return a placeholder path that should exist
+    String iconName;
     if (alert) {
-      return 'assets/icons/tray_alert.png';
+      iconName = 'tray_alert.png';
     } else if (connected) {
-      return 'assets/icons/tray_connected.png';
+      iconName = 'tray_connected.png';
     } else {
-      return 'assets/icons/tray_disconnected.png';
+      iconName = 'tray_disconnected.png';
+    }
+    
+    // Try to use a system icon as fallback if our icons don't exist
+    try {
+      return 'assets/icons/$iconName';
+    } catch (e) {
+      // Fallback to a basic icon or empty string
+      debugPrint('Icon not found: $iconName, using fallback');
+      return ''; // Empty path will use system default
     }
   }
 
