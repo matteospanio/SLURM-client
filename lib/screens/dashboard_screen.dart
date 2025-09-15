@@ -28,26 +28,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
 
     // Auto-connect to default connection if available
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final connectionProvider = context.read<ConnectionProvider>();
       final settingsProvider = context.read<SettingsProvider>();
-
-      if (!connectionProvider.isConnected &&
-          connectionProvider.defaultConnection != null) {
-        _showConnectionDialog();
-      }
-
-      // Setup auto-refresh if enabled
       final jobProvider = context.read<JobProvider>();
-      if (settingsProvider.settings.autoRefresh) {
-        jobProvider.startAutoRefresh(settingsProvider.settings.refreshInterval);
-      }
 
-      // Listen to job provider changes to update system tray
+      // Setup listeners first
       jobProvider.addListener(_updateSystemTray);
       connectionProvider.addListener(_updateSystemTray);
       
+      // Listen for connection changes to start/stop auto-refresh
+      connectionProvider.addListener(() {
+        if (connectionProvider.isConnected && settingsProvider.settings.autoRefresh) {
+          jobProvider.startAutoRefresh(settingsProvider.settings.refreshInterval);
+        } else {
+          jobProvider.stopAutoRefresh();
+        }
+      });
+
+      // Only try to connect if we have a default connection
+      if (!connectionProvider.isConnected &&
+          connectionProvider.defaultConnection != null) {
+        debugPrint('Found default connection, showing connection dialog');
+        _showConnectionDialog();
+      } else {
+        debugPrint('No default connection found or already connected');
+      }
+
+      // Setup auto-refresh if enabled (only when connected)
+      if (settingsProvider.settings.autoRefresh && connectionProvider.isConnected) {
+        jobProvider.startAutoRefresh(settingsProvider.settings.refreshInterval);
+      }
+      
       // Initialize system tray after UI is ready (desktop only)
+      // This is done independently of SSH connection status
       if (!kIsWeb && SystemTrayService.isSupported) {
         _initializeSystemTray();
       }
@@ -56,11 +70,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _initializeSystemTray() async {
     try {
-      // Wait a bit to ensure window is fully initialized
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Wait longer to ensure window and X11 system are fully initialized
+      await Future.delayed(const Duration(milliseconds: 2000));
+      
+      // Check if we're still mounted and if system tray is supported
+      if (!mounted || !SystemTrayService.isSupported) {
+        debugPrint('System tray initialization skipped - not supported or widget unmounted');
+        return;
+      }
+      
+      debugPrint('Attempting to initialize system tray...');
       await SystemTrayService().initialize();
+      debugPrint('System tray initialization completed successfully');
     } catch (e) {
-      debugPrint('Failed to initialize system tray: $e');
+      debugPrint('Failed to initialize system tray (non-critical): $e');
+      // System tray failure should not be critical for the app
     }
   }
 

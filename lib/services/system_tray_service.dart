@@ -18,25 +18,39 @@ class SystemTrayService {
 
   /// Initialize system tray
   Future<void> initialize() async {
-    if (_isInitialized || kIsWeb) return;
+    if (_isInitialized || kIsWeb) {
+      debugPrint('System tray already initialized or running on web');
+      return;
+    }
 
-    if (!kIsWeb && !Platform.isLinux) return;
+    if (!kIsWeb && !Platform.isLinux) {
+      debugPrint('System tray not supported on this platform');
+      return;
+    }
 
     try {
-      // Wait for X11 system to be fully ready
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Wait for X11 system to be fully ready on Linux
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      debugPrint('Starting system tray initialization...');
 
       final iconPath = _getIconPath();
+      debugPrint('Using icon path: $iconPath');
+      
       await _systemTray.initSystemTray(
         title: "SLURM Queue Client",
         iconPath: iconPath,
       );
+      debugPrint('System tray icon set successfully');
 
       await _setupContextMenu();
+      debugPrint('System tray context menu setup completed');
+      
       _isInitialized = true;
       debugPrint('System tray initialized successfully');
     } catch (e) {
       debugPrint('Failed to initialize system tray: $e');
+      _isInitialized = false;
       // Don't rethrow - system tray is not critical for app functionality
     }
   }

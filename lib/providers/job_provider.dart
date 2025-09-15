@@ -49,7 +49,19 @@ class JobProvider extends ChangeNotifier {
       // Apply current filter
       _applyFilter();
     } catch (e) {
-      _error = e.toString();
+      final errorMessage = e.toString();
+      
+      // Check if it's a connection issue
+      if (errorMessage.contains('Not connected to SSH server')) {
+        _error = 'Not connected to SSH server. Please connect to a cluster first.';
+        // Clear jobs when not connected
+        _jobs = [];
+        _filteredJobs = [];
+        _jobStatistics = {};
+      } else {
+        _error = errorMessage;
+      }
+      
       debugPrint('Error loading jobs: $e');
     } finally {
       _isLoading = false;
@@ -124,7 +136,11 @@ class JobProvider extends ChangeNotifier {
     stopAutoRefresh();
     _refreshTimer = Timer.periodic(
       Duration(seconds: intervalSeconds),
-      (_) => refreshJobs(),
+      (_) {
+        // Only refresh if we're likely to be connected
+        // The loadJobs method will handle the not-connected case gracefully
+        refreshJobs();
+      },
     );
   }
 
