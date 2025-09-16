@@ -1,17 +1,17 @@
 import 'dart:async';
 import '../models/connection.dart';
+import 'base_ssh_service.dart';
 
 /// Web-compatible SSH service that provides a placeholder implementation
 /// for web platform where native SSH is not supported
-class SshService {
-  SshConnection? _currentConnection;
-
+class WebSSHService extends BaseSSHService {
+  @override
   bool get isConnected => false; // Always false on web
-  SshConnection? get currentConnection => _currentConnection;
 
   /// Connect to SSH server - not supported on web
+  @override
   Future<bool> connect(SshConnection connection, {String? password}) async {
-    _currentConnection = connection;
+    setCurrentConnection(connection);
     throw Exception(
       'SSH connections are not supported on web platform. '
       'This feature is only available in the desktop version of the app.',
@@ -19,11 +19,13 @@ class SshService {
   }
 
   /// Disconnect from the SSH server
+  @override
   Future<void> disconnect() async {
-    _currentConnection = null;
+    setCurrentConnection(null);
   }
 
   /// Execute a command on the remote server - not supported on web
+  @override
   Future<String> executeCommand(String command) async {
     throw Exception(
       'SSH command execution is not supported on web platform. '
@@ -32,6 +34,7 @@ class SshService {
   }
 
   /// Execute command and return both stdout and stderr
+  @override
   Future<CommandResult> executeCommandWithDetails(String command) async {
     return CommandResult(
       stdout: '',
@@ -42,6 +45,7 @@ class SshService {
   }
 
   /// Test connection to the server - always returns false on web
+  @override
   Future<bool> testConnection(
     SshConnection connection, {
     String? password,
@@ -50,49 +54,32 @@ class SshService {
   }
 
   /// Cache password for a connection (no-op on web)
+  @override
   void cachePassword(String connectionString, String password) {
     // No-op on web
   }
 
   /// Clear cached password for a connection (no-op on web)
+  @override
   void clearPassword(String connectionString) {
     // No-op on web
   }
 
   /// Clear all cached passwords (no-op on web)
+  @override
   void clearAllPasswords() {
     // No-op on web
   }
 
   /// Get the current connection status
+  @override
   ConnectionStatus getConnectionStatus() {
     return ConnectionStatus.disconnected;
   }
 
   /// Dispose the service and cleanup resources
+  @override
   Future<void> dispose() async {
     await disconnect();
-  }
-}
-
-class CommandResult {
-  final String stdout;
-  final String stderr;
-  final int exitCode;
-  final String command;
-
-  const CommandResult({
-    required this.stdout,
-    required this.stderr,
-    required this.exitCode,
-    required this.command,
-  });
-
-  bool get isSuccess => exitCode == 0;
-  bool get hasError => exitCode != 0 || stderr.isNotEmpty;
-
-  @override
-  String toString() {
-    return 'CommandResult{command: $command, exitCode: $exitCode, stdout: ${stdout.length} chars, stderr: ${stderr.length} chars}';
   }
 }

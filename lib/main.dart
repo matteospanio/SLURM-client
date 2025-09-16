@@ -59,21 +59,21 @@ class SlurmQueueApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<SshService>(
-          create: (_) => SshService(),
+        Provider<BaseSSHService>(
+          create: (_) => createSSHService(),
           dispose: (_, service) => service.dispose(),
         ),
         Provider<StorageService>(create: (_) => StorageService()),
-        ProxyProvider<SshService, SlurmService>(
+        ProxyProvider<BaseSSHService, SlurmService>(
           update: (_, sshService, __) => SlurmService(sshService),
         ),
         ChangeNotifierProxyProvider2<
-          SshService,
+          BaseSSHService,
           StorageService,
           ConnectionProvider
         >(
           create: (context) => ConnectionProvider(
-            context.read<SshService>(),
+            context.read<BaseSSHService>(),
             context.read<StorageService>(),
           ),
           update: (_, sshService, storageService, previous) =>

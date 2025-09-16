@@ -1,9 +1,9 @@
 import 'dart:async';
 import '../models/job.dart';
-import '../services/ssh_service.dart';
+import 'base_ssh_service.dart';
 
 class SlurmService {
-  final SshService _sshService;
+  final BaseSSHService _sshService;
 
   SlurmService(this._sshService);
 
