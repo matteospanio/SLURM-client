@@ -21,8 +21,11 @@ class DesktopSSHService extends BaseSSHService {
       await disconnect(); // Disconnect any existing connection
 
       // Create SSH socket connection
-      final socket = await SSHSocket.connect(connection.hostname, connection.port);
-      
+      final socket = await SSHSocket.connect(
+        connection.hostname,
+        connection.port,
+      );
+
       // Create SSH client
       if (connection.usePassword) {
         // Password authentication
@@ -30,7 +33,7 @@ class DesktopSSHService extends BaseSSHService {
         if (pwd == null) {
           throw Exception('Password required for connection');
         }
-        
+
         _client = SSHClient(
           socket,
           username: connection.username,
@@ -39,7 +42,7 @@ class DesktopSSHService extends BaseSSHService {
       } else {
         // Key-based authentication
         final privateKey = await _getPrivateKey(connection);
-        
+
         _client = SSHClient(
           socket,
           username: connection.username,
@@ -48,13 +51,15 @@ class DesktopSSHService extends BaseSSHService {
       }
 
       setCurrentConnection(connection);
-      
+
       // Cache password if provided
       if (password != null && connection.usePassword) {
         _passwordCache[connection.connectionString] = password;
       }
-      
-      debugPrint('SSH connection established successfully to ${connection.connectionString}');
+
+      debugPrint(
+        'SSH connection established successfully to ${connection.connectionString}',
+      );
       return true;
     } catch (e) {
       debugPrint('SSH connection failed: $e');
@@ -86,9 +91,9 @@ class DesktopSSHService extends BaseSSHService {
     try {
       final session = await _client!.execute(command);
       await session.done;
-      
+
       // Read stdout
-      final stdout = await session.stdout.transform(utf8.decoder).join();
+      final stdout = await session.stdout.map(utf8.decode).join();
       return stdout;
     } catch (e) {
       throw Exception('Failed to execute command "$command": $e');
@@ -104,17 +109,17 @@ class DesktopSSHService extends BaseSSHService {
 
     try {
       final session = await _client!.execute(command);
-      
+
       // Read both stdout and stderr concurrently
-      final stdoutFuture = session.stdout.transform(utf8.decoder).join();
-      final stderrFuture = session.stderr.transform(utf8.decoder).join();
-      
+      final stdoutFuture = session.stdout.map(utf8.decode).join();
+      final stderrFuture = session.stderr.map(utf8.decode).join();
+
       await session.done;
-      
+
       final stdout = await stdoutFuture;
       final stderr = await stderrFuture;
       final exitCode = session.exitCode ?? 0;
-      
+
       return CommandResult(
         stdout: stdout,
         stderr: stderr,
@@ -140,8 +145,11 @@ class DesktopSSHService extends BaseSSHService {
     SSHClient? tempClient;
     try {
       // Create SSH socket connection
-      final socket = await SSHSocket.connect(connection.hostname, connection.port);
-      
+      final socket = await SSHSocket.connect(
+        connection.hostname,
+        connection.port,
+      );
+
       // Create SSH client for testing
       if (connection.usePassword) {
         // Password authentication
@@ -149,7 +157,7 @@ class DesktopSSHService extends BaseSSHService {
         if (pwd == null) {
           throw Exception('Password required for connection');
         }
-        
+
         tempClient = SSHClient(
           socket,
           username: connection.username,
@@ -158,23 +166,23 @@ class DesktopSSHService extends BaseSSHService {
       } else {
         // Key-based authentication
         final privateKey = await _getPrivateKey(connection);
-        
+
         tempClient = SSHClient(
           socket,
           username: connection.username,
           identities: [privateKey],
         );
       }
-      
+
       // Test basic command
       final session = await tempClient.execute('echo test');
       await session.done;
-      final result = await session.stdout.transform(utf8.decoder).join();
-      
+      final result = await session.stdout.map(utf8.decode).join();
+
       if (!result.contains('test')) {
         throw Exception('Failed to execute test command');
       }
-      
+
       tempClient.close();
       return true;
     } catch (e) {
@@ -225,7 +233,7 @@ class DesktopSSHService extends BaseSSHService {
   /// Get private key for authentication
   Future<SSHKeyPair> _getPrivateKey(SshConnection connection) async {
     String? keyContent;
-    
+
     if (connection.privateKeyPath != null) {
       final keyFile = File(connection.privateKeyPath!);
       if (!keyFile.existsSync()) {
@@ -237,8 +245,7 @@ class DesktopSSHService extends BaseSSHService {
     } else {
       // Try default SSH keys
       final homeDir =
-          Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'];
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
       if (homeDir != null) {
         final defaultKeyPaths = [
           '$homeDir/.ssh/id_rsa',
@@ -263,10 +270,14 @@ class DesktopSSHService extends BaseSSHService {
         throw Exception('Cannot determine home directory for SSH keys');
       }
     }
-    
+
     // Parse the private key
     try {
-      return SSHKeyPair.fromPem(keyContent!);
+      final keyPairs = SSHKeyPair.fromPem(keyContent);
+      if (keyPairs.isEmpty) {
+        throw Exception('No valid SSH key found in the provided PEM.');
+      }
+      return keyPairs.first;
     } catch (e) {
       throw Exception('Failed to parse private key: $e');
     }
