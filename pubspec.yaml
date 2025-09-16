@@ -36,7 +36,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   
   # Core dependencies for SLURM client functionality
-  ssh2: ^2.2.3
   provider: ^6.1.2
   json_annotation: ^4.8.1
   shared_preferences: ^2.2.3
