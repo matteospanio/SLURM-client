@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:ssh2/ssh2.dart';
+import 'package:dartssh2/dartssh2.dart';
 import '../models/connection.dart';
 import 'base_ssh_service.dart';
 
-/// Desktop SSH service implementation using the ssh2 package
+/// Desktop SSH service implementation using the dartssh2 package
 class DesktopSSHService extends BaseSSHService {
   SSHClient? _client;
   final Map<String, String> _passwordCache = {};
@@ -19,16 +20,33 @@ class DesktopSSHService extends BaseSSHService {
     try {
       await disconnect(); // Disconnect any existing connection
 
-      final passwordOrKey = await _getPasswordOrKey(connection, password);
+      // Create SSH socket connection
+      final socket = await SSHSocket.connect(connection.hostname, connection.port);
       
-      _client = SSHClient(
-        host: connection.hostname,
-        port: connection.port,
-        username: connection.username,
-        passwordOrKey: passwordOrKey,
-      );
+      // Create SSH client
+      if (connection.usePassword) {
+        // Password authentication
+        final pwd = password ?? _passwordCache[connection.connectionString];
+        if (pwd == null) {
+          throw Exception('Password required for connection');
+        }
+        
+        _client = SSHClient(
+          socket,
+          username: connection.username,
+          onPasswordRequest: () => pwd,
+        );
+      } else {
+        // Key-based authentication
+        final privateKey = await _getPrivateKey(connection);
+        
+        _client = SSHClient(
+          socket,
+          username: connection.username,
+          identities: [privateKey],
+        );
+      }
 
-      await _client!.connect();
       setCurrentConnection(connection);
       
       // Cache password if provided
@@ -49,7 +67,7 @@ class DesktopSSHService extends BaseSSHService {
   @override
   Future<void> disconnect() async {
     try {
-      await _client?.disconnect();
+      _client?.close();
     } catch (e) {
       debugPrint('Error during SSH disconnect: $e');
       // Ignore disconnect errors
@@ -66,8 +84,12 @@ class DesktopSSHService extends BaseSSHService {
     }
 
     try {
-      final result = await _client!.execute(command);
-      return result ?? '';
+      final session = await _client!.execute(command);
+      await session.done;
+      
+      // Read stdout
+      final stdout = await session.stdout.transform(utf8.decoder).join();
+      return stdout;
     } catch (e) {
       throw Exception('Failed to execute command "$command": $e');
     }
@@ -81,11 +103,22 @@ class DesktopSSHService extends BaseSSHService {
     }
 
     try {
-      final result = await _client!.execute(command);
+      final session = await _client!.execute(command);
+      
+      // Read both stdout and stderr concurrently
+      final stdoutFuture = session.stdout.transform(utf8.decoder).join();
+      final stderrFuture = session.stderr.transform(utf8.decoder).join();
+      
+      await session.done;
+      
+      final stdout = await stdoutFuture;
+      final stderr = await stderrFuture;
+      final exitCode = session.exitCode ?? 0;
+      
       return CommandResult(
-        stdout: result ?? '',
-        stderr: '',
-        exitCode: 0,
+        stdout: stdout,
+        stderr: stderr,
+        exitCode: exitCode,
         command: command,
       );
     } catch (e) {
@@ -106,28 +139,47 @@ class DesktopSSHService extends BaseSSHService {
   }) async {
     SSHClient? tempClient;
     try {
-      final passwordOrKey = await _getPasswordOrKey(connection, password);
-
-      tempClient = SSHClient(
-        host: connection.hostname,
-        port: connection.port,
-        username: connection.username,
-        passwordOrKey: passwordOrKey,
-      );
-
-      await tempClient.connect();
+      // Create SSH socket connection
+      final socket = await SSHSocket.connect(connection.hostname, connection.port);
+      
+      // Create SSH client for testing
+      if (connection.usePassword) {
+        // Password authentication
+        final pwd = password ?? _passwordCache[connection.connectionString];
+        if (pwd == null) {
+          throw Exception('Password required for connection');
+        }
+        
+        tempClient = SSHClient(
+          socket,
+          username: connection.username,
+          onPasswordRequest: () => pwd,
+        );
+      } else {
+        // Key-based authentication
+        final privateKey = await _getPrivateKey(connection);
+        
+        tempClient = SSHClient(
+          socket,
+          username: connection.username,
+          identities: [privateKey],
+        );
+      }
       
       // Test basic command
-      final result = await tempClient.execute('echo test');
-      if (result == null || !result.contains('test')) {
+      final session = await tempClient.execute('echo test');
+      await session.done;
+      final result = await session.stdout.transform(utf8.decoder).join();
+      
+      if (!result.contains('test')) {
         throw Exception('Failed to execute test command');
       }
       
-      await tempClient.disconnect();
+      tempClient.close();
       return true;
     } catch (e) {
       try {
-        await tempClient?.disconnect();
+        tempClient?.close();
       } catch (_) {
         // Ignore disconnect errors during cleanup
       }
@@ -158,7 +210,7 @@ class DesktopSSHService extends BaseSSHService {
   @override
   ConnectionStatus getConnectionStatus() {
     if (_client == null) return ConnectionStatus.disconnected;
-    // Note: ssh2 package doesn't provide connection status check
+    // Note: dartssh2 package doesn't provide direct connection status check
     // We assume connected if client exists
     return ConnectionStatus.connected;
   }
@@ -170,51 +222,53 @@ class DesktopSSHService extends BaseSSHService {
     clearAllPasswords();
   }
 
-  /// Get password or key for authentication
-  Future<String> _getPasswordOrKey(SshConnection connection, String? password) async {
-    if (connection.usePassword) {
-      // Use password authentication
-      final pwd = password ?? _passwordCache[connection.connectionString];
-      if (pwd == null) {
-        throw Exception('Password required for connection');
+  /// Get private key for authentication
+  Future<SSHKeyPair> _getPrivateKey(SshConnection connection) async {
+    String? keyContent;
+    
+    if (connection.privateKeyPath != null) {
+      final keyFile = File(connection.privateKeyPath!);
+      if (!keyFile.existsSync()) {
+        throw Exception(
+          'Private key file not found: ${connection.privateKeyPath}',
+        );
       }
-      return pwd;
+      keyContent = await keyFile.readAsString();
     } else {
-      // Use key-based authentication
-      if (connection.privateKeyPath != null) {
-        final keyFile = File(connection.privateKeyPath!);
-        if (!keyFile.existsSync()) {
-          throw Exception(
-            'Private key file not found: ${connection.privateKeyPath}',
-          );
-        }
-        return await keyFile.readAsString();
-      } else {
-        // Try default SSH keys
-        final homeDir =
-            Platform.environment['HOME'] ??
-            Platform.environment['USERPROFILE'];
-        if (homeDir != null) {
-          final defaultKeyPaths = [
-            '$homeDir/.ssh/id_rsa',
-            '$homeDir/.ssh/id_ed25519',
-            '$homeDir/.ssh/id_ecdsa',
-          ];
+      // Try default SSH keys
+      final homeDir =
+          Platform.environment['HOME'] ??
+          Platform.environment['USERPROFILE'];
+      if (homeDir != null) {
+        final defaultKeyPaths = [
+          '$homeDir/.ssh/id_rsa',
+          '$homeDir/.ssh/id_ed25519',
+          '$homeDir/.ssh/id_ecdsa',
+        ];
 
-          for (final keyPath in defaultKeyPaths) {
-            final keyFile = File(keyPath);
-            if (keyFile.existsSync()) {
-              return await keyFile.readAsString();
-            }
+        for (final keyPath in defaultKeyPaths) {
+          final keyFile = File(keyPath);
+          if (keyFile.existsSync()) {
+            keyContent = await keyFile.readAsString();
+            break;
           }
+        }
 
+        if (keyContent == null) {
           throw Exception(
             'No SSH key found. Please specify a private key path.',
           );
-        } else {
-          throw Exception('Cannot determine home directory for SSH keys');
         }
+      } else {
+        throw Exception('Cannot determine home directory for SSH keys');
       }
+    }
+    
+    // Parse the private key
+    try {
+      return SSHKeyPair.fromPem(keyContent!);
+    } catch (e) {
+      throw Exception('Failed to parse private key: $e');
     }
   }
 }
