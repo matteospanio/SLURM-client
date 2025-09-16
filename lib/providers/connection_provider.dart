@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/connection.dart';
-import '../services/ssh_service.dart';
+import '../services/base_ssh_service.dart';
 import '../services/storage_service.dart';
 
 class ConnectionProvider extends ChangeNotifier {
-  final SshService _sshService;
+  final BaseSSHService _sshService;
   final StorageService _storageService;
   
   ConnectionState _connectionState = const ConnectionState();
@@ -62,10 +62,11 @@ class ConnectionProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
       _setConnectionState(
         _connectionState.copyWith(
           status: ConnectionStatus.error,
-          errorMessage: e.toString(),
+          errorMessage: errorMessage,
         ),
       );
       return false;
@@ -93,7 +94,8 @@ class ConnectionProvider extends ChangeNotifier {
     try {
       return await _sshService.testConnection(connection, password: password);
     } catch (e) {
-      _error = e.toString();
+      final errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _error = errorMessage;
       notifyListeners();
       return false;
     }
