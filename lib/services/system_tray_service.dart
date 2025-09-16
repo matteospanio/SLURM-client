@@ -18,25 +18,39 @@ class SystemTrayService {
 
   /// Initialize system tray
   Future<void> initialize() async {
-    if (_isInitialized || kIsWeb) return;
+    if (_isInitialized || kIsWeb) {
+      debugPrint('System tray already initialized or running on web');
+      return;
+    }
 
-    if (!kIsWeb && !Platform.isLinux) return;
+    if (!kIsWeb && !Platform.isLinux) {
+      debugPrint('System tray not supported on this platform');
+      return;
+    }
 
     try {
-      // Wait for X11 system to be fully ready
-      await Future.delayed(const Duration(milliseconds: 100));
+      // Wait for X11 system to be fully ready on Linux
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      debugPrint('Starting system tray initialization...');
 
       final iconPath = _getIconPath();
+      debugPrint('Using icon path: $iconPath');
+      
       await _systemTray.initSystemTray(
         title: "SLURM Queue Client",
         iconPath: iconPath,
       );
+      debugPrint('System tray icon set successfully');
 
       await _setupContextMenu();
+      debugPrint('System tray context menu setup completed');
+      
       _isInitialized = true;
       debugPrint('System tray initialized successfully');
     } catch (e) {
       debugPrint('Failed to initialize system tray: $e');
+      _isInitialized = false;
       // Don't rethrow - system tray is not critical for app functionality
     }
   }
@@ -147,8 +161,7 @@ class SystemTrayService {
     // Check if we're in web environment first
     if (kIsWeb) return '';
 
-    // In a real implementation, you would have different icon files
-    // For now, return a placeholder path that should exist
+    // In production builds, icons are in the assets directory
     String iconName;
     if (alert) {
       iconName = 'tray_alert.png';
@@ -158,8 +171,9 @@ class SystemTrayService {
       iconName = 'tray_disconnected.png';
     }
 
-    // Try to use a system icon as fallback if our icons don't exist
     try {
+      // Use absolute path for system tray
+      // In a Flutter app, assets are typically in the bundle
       return 'assets/icons/$iconName';
     } catch (e) {
       // Fallback to a basic icon or empty string
